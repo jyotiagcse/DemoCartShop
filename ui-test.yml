@@ -1,0 +1,145 @@
+cy_modules_brandshop:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_PAYLOAD == "BRANDSHOP_TEST"'
+      when: always
+    - when: never
+  variables:
+    npm_config_unsafe_perm: "true"
+  artifacts:
+    name: cy_modules
+    expire_in: 1 day
+    paths:
+      - packages/democart-tests/node_modules/
+  script:
+    - cd packages/democart-tests
+    - yarn install
+
+.cypress_nightly_brandshop_test:
+  image:
+    name: ${CI_REGISTRY}/diconium/hub/mirror/cypress/included:9.7.0
+    # cypress/included images have entrypoint set to "cypress"
+    # which conflicts with GitLab CI wrapper shell script
+    entrypoint: [ "" ]
+  extends:
+    - .on-democart-test
+  dependencies: [ "cy_modules_brandshop" ]
+  needs: [ "cy_modules_brandshop" ]
+  stage: qa-gate
+  allow_failure: true
+  environment:
+    name: pre/cypress/$BRAND
+  variables:
+    BRANDSHOP_USER: onehub-cms-user
+  script:
+    # Run cypress tests via CLI
+    - cd packages/democart-tests
+    - npx cypress run --browser chrome --spec $TEST_SPEC --env TAGS="@regression or @smoke",configFile=$CONFIG_FILE,username=$BRANDSHOP_USER,password=$BRANDSHOP_PASS,market-local=$MARKET_LOCALE,brand=$BRAND,productLine=$PRODUCT_LINE  --reporter-options configFile=$REPORT_PORTAL_CONFIG
+  after_script:
+    - cd packages/democart-tests
+    - node custom-reporter.js
+  artifacts:
+    expire_in: 1 days
+    when: always
+    paths:
+      - packages/democart-tests/cypress/reports
+      - packages/democart-tests/cypress/videos
+      - packages/democart-tests/cypress/screenshots
+
+.upload_smoke_artifacts:
+  image:
+    name: ${CI_REGISTRY}/diconium/hub/mirror/mcr.microsoft.com/azure-cli:latest
+  extends:
+    - .on-merge-request
+  stage: qa-gate
+  script:
+    - echo 'Listing downloaded artifacts'
+    - ls packages/democart-tests/cypress/reports/cucumber-json
+    - ls packages/democart-tests/cypress/videos
+    - echo 'Uploading artifacts via AZ CLI'
+    - cd packages/democart-tests/cypress/reports/
+    - az storage blob upload-batch --account-name qpsourcedata -s cucumber-json --pattern *.json --overwrite true -d qcp-resukts --destination-path gitLab/smoke  --sas-token "sp=racwdli&st=2022-03-30T10:47:23Z&se=2022-04-06T18:47:23Z&spr=https&sv=2020-08-04&sr=c&sig=ZYJFN%2BSRP3Dzu5qmaSPen52v9JadgNEJb7%2BOA21VkdQ%3D"
+
+.upload_regression_artifacts:
+  image:
+    name: ${CI_REGISTRY}/diconium/hub/mirror/mcr.microsoft.com/azure-cli:latest
+  extends:
+    - .on-ui-test
+  stage: qa-gate
+  script:
+    - echo 'Listing downloaded artifacts'
+    - ls packages/democart-tests/cypress/reports/cucumber-json
+    - ls packages/democart-tests/cypress/videos
+    - echo 'Uploading artifacts via AZ CLI'
+    - cd packages/democart-tests/cypress/reports/
+    - echo AZURE_BLOB_TOKEN_FILE
+    - az storage blob upload-batch --account-name qpsourcedata -s cucumber-json --pattern *.json --overwrite true -d qcp-resukts --destination-path gitLab/regression  --sas-token "$(cat AZURE_BLOB_TOKEN_FILE)"
+
+#upload_smoke_results:
+#  extends:
+#    - .upload_smoke_artifacts
+#  dependencies: ['smoke_productListPage_Audi', 'smoke_productDetailPage_Audi',
+#                  'smoke_shoppingCartPage_Audi', 'smoke_purchaseJourneys_Audi',
+#                  'smoke_productListPage_VW', 'smoke_productDetailPage_VW',
+#                  'smoke_shoppingCartPage_VW', 'smoke_builtToOrder_VW',
+#                  'smoke_login_VW', 'smoke_preLoginPage_VW', 'smoke_purchaseJourneys_VW']
+#  needs: ['smoke_productListPage_Audi', 'smoke_productDetailPage_Audi',
+#          'smoke_shoppingCartPage_Audi', 'smoke_purchaseJourneys_Audi',
+#          'smoke_productListPage_VW', 'smoke_productDetailPage_VW',
+#          'smoke_shoppingCartPage_VW', 'smoke_builtToOrder_VW',
+#          'smoke_login_VW', 'smoke_preLoginPage_VW', 'smoke_purchaseJourneys_VW']
+
+##### Cypress nightly VW tests ################################
+
+regression_e2eJourney_VW:
+  extends:
+    - .cypress_nightly_brandshop_test
+  variables:
+    TEST_SPEC: cypress/integration/cucumber/democart/e2e/e2eJourneys.feature
+    CONFIG_FILE: vw_brandShop
+    MARKET_LOCALE: de-de
+    BRAND: vw
+    PRODUCT_LINE: scs
+    REPORT_PORTAL_CONFIG: reportportal/report.json
+
+regression_e2eJourney_VWN:
+  extends:
+    - .cypress_nightly_brandshop_test
+  variables:
+    TEST_SPEC: cypress/integration/cucumber/democart/e2e/e2eJourneys.feature
+    CONFIG_FILE: vwn_brandShop
+    MARKET_LOCALE: de-de
+    BRAND: vwn
+    PRODUCT_LINE: scs
+    REPORT_PORTAL_CONFIG: reportportal/report.json
+
+regression_e2eJourney_audi:
+  extends:
+     - .cypress_nightly_brandshop_test
+  variables:
+     TEST_SPEC: cypress/integration/cucumber/democart/e2e/e2eJourneys.feature
+     CONFIG_FILE: audi_brandShop
+     MARKET_LOCALE: de-de
+     BRAND: audi
+     PRODUCT_LINE: scs
+     REPORT_PORTAL_CONFIG: reportportal/report.json
+
+
+#upload_regression_results:
+#  extends:
+#    - .upload_regression_artifacts
+#  dependencies: [ 'regression_billingPage_VW', 'regression_brandTeaserPage_VW', 'regression_builtToOrder_VW',
+#                  'regression_deliveryAndServices_VW', 'regression_productDetailPage_VW', 'regression_productListPage_VW' ,
+#                  'regression_purchaseJourney_VW', 'regression_shoppingCartPage_VW', 'regression_orderOverviewPage_VW',
+#                  'regression_find&show_checkout_VW',
+#                  'regression_billingPage_Audi', 'regression_brandTeaserPage_Audi', 'regression_deliveryAndServices_Audi',
+#                  'regression_productDetailPage_Audi', 'regression_productListPage_Audi', 'regression_purchaseJourney_Audi',
+#                  'regression_shoppingCartPage_Audi', 'regression_orderOverviewPage_Audi', 'regression_find&show_checkout_Audi' ]
+#  needs: [ 'regression_billingPage_VW', 'regression_brandTeaserPage_VW', 'regression_builtToOrder_VW',
+#           'regression_deliveryAndServices_VW', 'regression_productDetailPage_VW', 'regression_productListPage_VW' ,
+#           'regression_purchaseJourney_VW', 'regression_shoppingCartPage_VW', 'regression_orderOverviewPage_VW',
+#           'regression_find&show_checkout_VW',
+#           'regression_billingPage_Audi', 'regression_brandTeaserPage_Audi', 'regression_deliveryAndServices_Audi',
+#           'regression_productDetailPage_Audi', 'regression_productListPage_Audi', 'regression_purchaseJourney_Audi',
+#           'regression_shoppingCartPage_Audi', 'regression_orderOverviewPage_Audi', 'regression_find&show_checkout_Audi' ]
+#

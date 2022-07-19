@@ -1,0 +1,3 @@
+<testsuite name="Mocha Tests" tests="1" failures="0" errors="0" skipped="0" timestamp="Tue, 19 Jul 2022 11:05:26 GMT" time="23.937">
+<testcase classname="Checkout Page" name="Purchase coffee machine,LCD (example #1)" time="20.017"/>
+</testsuite>

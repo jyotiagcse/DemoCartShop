@@ -1,0 +1,39 @@
+{
+  "name": "democart",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Automation framework for the Demo Cart Shop",
+  "main": "index.js",
+  "cypress-cucumber-preprocessor": {
+    "nonGlobalStepDefinitions": true,
+    "cucumberJson": {
+      "generate": true,
+      "outputFolder": "cypress/reports/cucumber-json",
+      "filePrefix": "",
+      "fileSuffix": ".cucumber"
+    }
+  },
+  "devDependencies": {
+    "@cypress/skip-test": "2.6.1",
+    "chai-sorted": "0.2.0",
+    "cypress": "9.7.0",
+    "cypress-cucumber-preprocessor": "^4.3.1",
+    "cypress-wait-until": "1.7.2",
+    "mocha": "10.0.0",
+    "multiple-cucumber-html-reporter": "1.19.0",
+    "prettier": "2.6.2"
+  },
+  "dependencies": {
+    "cypress-multi-reporters": "^1.6.0",
+    "fs-extra": "^10.1.0",
+    "soft-assert": "^0.2.6"
+  },
+  "scripts": {
+    "generate_cucumber_report": "node custom-reporter.js",
+    "test": "npx cypress run --spec \"cypress/integration/cucumber/democart/e2e/checkoutPage.feature\" --browser chrome",
+    "openMode" : "npx cypress open"
+  },
+  "installConfig": {
+    "hoistingLimits": "workspaces"
+  }
+}
